@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.spring.client.gallery.dao.GalleryDao">
+
+<!-- 갤러리 등록 -->
+<insert id="galleryInsert" parameterType="gallery">
+ 	/*gallery - galleryInsert*/
+ 	<selectKey keyProperty="g_num" resultType="int" order="BEFORE">
+ 	select spring_gallery_seq.nextval from dual
+ 	</selectKey>
+	insert into spring_gallery
+	(g_num, g_name, g_subject, g_content, g_thumb, g_file, g_pwd)
+	values
+	(#{g_num}, #{g_name}, #{g_subject}, #{g_content}, #{g_thumb}, #{g_file}, #{g_pwd})
+
+</insert>
+
+<!-- 갤러리 기본 조회 -->
+<select id="galleryList" resultType="gallery">
+	/*gallery - galleryList*/
+	<![CDATA[
+		select /*+ INDEX_DESC(spring_gallery spring_gallery_pk) */ 
+    		g_num, g_name, g_subject, g_content, g_thumb, g_file,
+			to_char(g_date, 'YYYY.MM.DD') as g_date
+		from spring_gallery
+	]]>
+</select>
+
+<!-- 해당 번호의 비밀번호 확인 -->
+<select id="pwdConfirm" parameterType="gallery" resultType="int">
+	/*gallery - pwdConfirm*/
+	SELECT NVL((
+				 SELECT 1 FROM spring_gallery
+				 WHERE g_num = #{g_num} AND g_pwd = #{g_pwd}
+				 ), 0) as result
+	FROM dual			 
+</select>
+
+
+<!-- 갤럭시 상세 -->
+<select id="galleryDetail" parameterType="gallery" resultType="gallery">
+	select g_name,g_num, g_subject, g_content, g_thumb, g_file,
+	to_char(g_date, 'YYYY.MM.DD') as g_date
+	FROM spring_gallery where g_num = #{g_num}
+</select>
+
+
+<!-- 갤럭시 삭제 -->
+<delete id="galleryDelete" parameterType="int">
+	/* gallery - galleryDelete*/
+	delete from spring_gallery where g_num = #{g_num}
+</delete>
+
+<!-- 갤러리 업데이트 -->
+<update id="galleryUpdate" parameterType="gallery">
+	/* gallery - galleryUpdate */
+	update spring_gallery
+	set g_subject = #{g_subject}
+		,g_content = #{g_content}
+		<if test="g_thumb!=''">
+		,g_thumb =#{g_thumb}
+		
+		</if>
+	<if test="g_file!=''">
+		,g_file = #{g_file}
+	</if>
+	<if test="g_pwd!=''">
+		,g_pwd=${g_pwd}
+	
+	</if>	
+		,g_date = sysdate
+		where g_num = #{g_num}
+	
+</update>
+
+
+</mapper>

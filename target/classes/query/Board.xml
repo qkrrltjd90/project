@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.spring.client.board.dao.BoardDao">
+	
+	
+	<sql id="boardSearch"> <!-- sq ld에 정의해서 id만 으로 사용 가능 -->
+			<if test="search=='b_title'">
+           		<![CDATA[ b_title LIKE '%' || #{keyword} ||'%' ]]>	
+           	</if>
+           	<if test="search=='b_content'">
+           		<![CDATA[ b_content LIKE'%' ||#{keyword} ||'%']]>
+           	</if>
+           	<if test="search=='b_name'">
+           		<![CDATA[ b_name LIKE '%' || #{keyword} ||'%']]>
+           	</if>
+	</sql>	
+	
+	
+	
+	<!-- 게시물 리스트 기본 조회 -->
+	<!-- <select id="boardList" resultType="com.spring.client.board.vo.BoardVO">
+		SELECT b_num, b_name, b_title, to_char(b_date, 'YYYY-MM-DD') as b_date, 
+		(select count(r_num) from spring_reply where b_num = boardlist.b_num) as r_cnt
+		FROM spring_board boardlist
+		<where>
+			<if test="search=='b_title'">
+				<![CDATA[ b_title LIKE '%'||#{keyword} ||'%']]>
+			</if>
+			<if test="search=='b_content'">
+				<![CDATA[ b_content LIKE '%' || #{keyword} || '%' ]]>
+			</if>
+			<if test="search=='b_name'">
+				<![CDATA[b_name LIKE '%' || #{keyword} || '%' ]]>
+			</if>ㄴ
+		</where>
+		ORDER BY b_num desc
+	</select> -->
+
+	<!--  게시판 리스트 기본 조회(페이징 처리와 검색 처리) -->
+	<select id="boardList" parameterType="board" resultType="board">
+		<![CDATA[
+		 SELECT
+		     b_num, b_name, b_title, to_char(b_date,'YYYY-MM-DD') as b_date, r_cnt
+		  FROM(
+	            select /*+ INDEX_DESC(spring_board spring_board_pk)*/
+	                rownum as rnum, b_num, b_name, b_title, b_date, r_cnt 
+	            FROM spring_board
+	            WHERE]]>
+	            <trim prefix="(" suffix=") AND " prefixOverrides="AND">
+	           		<include refid="boardSearch"></include>
+	            </trim>
+	            <![CDATA[ rownum <= #{pageNum} * #{amount}
+		        ) boardlist
+		    WHERE rnum > (#{pageNum} - 1) * #{amount}
+		]]>    
+	</select>
+	
+	<!-- 게시물 등록 1 -->
+	<!-- <insert id="boardInsert" parameterType="com.spring.client.board.vo.BoardVO">
+		INSERT INTO spring_board(b_num, b_name, b_title, b_content, b_pwd) 
+		VALUES(spring_board_seq.nextval, #{b_name}, #{b_title}, #{b_content}, #{b_pwd})
+	</insert> -->
+	
+	<!-- 게시물 등록 2 : 쿼리가 수행되기 전에 키 값을 받아오는 선행 쿼리를 실행 -->
+	<insert id="boardInsert" parameterType="board">
+		/* Board - boardInsert */
+		<selectKey keyProperty="b_num" resultType="int" order="BEFORE">
+			SELECT spring_board_seq.nextval FROM dual
+		</selectKey>
+		
+		INSERT INTO spring_board(b_num, b_name, b_title, b_content, b_pwd) 
+		VALUES(#{b_num}, #{b_name}, #{b_title}, #{b_content}, #{b_pwd})
+	</insert>
+	
+	<!-- 상세페이지를 위한 게시물 조회 -->
+	<select id="boardDetail" parameterType="int" resultType="board">
+		/* Board - boardDetail */
+		SELECT 
+			b_num, b_name, b_title, b_content, 
+			TO_CHAR(b_date, 'YYYY-MM-DD HH24:MI:SS') AS b_date 
+		FROM spring_board 
+		WHERE b_num = #{b_num}
+	</select>
+	
+	<!-- 해당 글번호의 비밀번호 확인 -->
+	<select id="pwdConfirm" parameterType="board" resultType="int">
+		/* Board - pwdConfirm */
+		SELECT NVL((
+					SELECT 1 FROM spring_board
+					WHERE b_num = #{b_num} AND b_pwd = #{b_pwd}
+					), 0) as state
+		FROM dual
+	</select>
+	
+	<!-- 게시물 수정  -->
+	<update id="boardUpdate" parameterType="board">
+		/* Board - boardUpdate */
+		UPDATE spring_board
+			SET b_title = #{b_title}
+				, b_content = #{b_content}
+				, b_date = sysdate
+				<if test="b_pwd != ''">
+				, b_pwd = #{b_pwd}
+				</if>
+		WHERE b_num = #{b_num}
+	</update>
+	
+	<!-- 게시물 삭제  VO의 변수 값과 매개변수의 이름이 같다면 파라미터 타입은 두개다 사용 가능하다. -->
+	<delete id="boardDelete" parameterType="board">
+		/* Board - boardDelete */
+		DELETE FROM spring_board WHERE b_num = #{b_num}
+	</delete>
+	
+	<!-- 댓글 개수 수정 -->
+	<update id="replyCntUpdate">
+		update spring_board set r_cnt = r_cnt + #{amount} where b_num = #{b_num}
+	
+	</update>	
+	
+	<!-- 전체 레코드 수 조회 -->
+	<select id="boardListCnt" parameterType="board" resultType="int">
+		SELECT count(*) FROM spring_board
+		<trim prefix=" where (" suffix=")">
+			<include refid="boardSearch"></include>
+		</trim>
+	</select>
+</mapper>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.spring.client.reply.dao.ReplyDao">
+	<!-- 해당 글 댓글 조회 -->
+	<select id="replyList" parameterType="com.spring.client.reply.vo.ReplyVO" resultType="com.spring.client.reply.vo.ReplyVO">
+		/* Reply - replyList */
+		SELECT r_num, b_num, r_name, r_content, r_pwd, to_char(r_date, 'YYYY-MM-DD HH24:MI:SS') as r_date
+		FROM spring_reply
+		WHERE b_num = #{b_num}
+		ORDER BY r_num desc
+	</select>
+	
+	<!-- 댓글 생성 -->
+	<insert id="replyInsert" parameterType="reply">
+		/* Reply - replyInsert */
+		<selectKey keyProperty="r_num" resultType="int" order="BEFORE">
+			SELECT spring_reply_seq.nextval FROM dual
+		</selectKey>
+		INSERT INTO spring_reply(b_num, r_num, r_name, r_content, r_pwd) 
+		VALUES(#{b_num}, #{r_num}, #{r_name}, #{r_content}, #{r_pwd})
+	</insert>
+	
+	<!-- 댓글 비밀번호 확인 -->
+	<select id="pwdConfirm" parameterType="reply" resultType="int">
+		/* Reply - pwdConfirm */
+		SELECT NVL((
+					SELECT 1 FROM spring_reply
+					WHERE r_num = #{r_num} AND r_pwd = #{r_pwd}
+					), 0) as state
+		FROM dual
+	</select>
+	
+	<!-- 댓글 수정 -->
+	<update id="replyUpdate">
+		/* Reply - replyUpdate */
+		UPDATE spring_reply 
+		SET r_content = #{r_content}
+		, r_date = sysdate
+		<if test="r_pwd != ''">
+			, r_pwd = #{r_pwd}
+		</if>
+		WHERE r_num = #{r_num}
+	</update>
+	
+	<!-- 댓글 삭제 -->
+	<delete id="replyDelete" parameterType="reply">
+		/* Reply - replyDelete */
+		DELETE FROM spring_reply WHERE r_num = #{r_num}
+	</delete>
+	
+	
+	<!-- 댓글 수정 전 레코드 조회 -->
+	<select id="replySelect" parameterType="int" resultType="reply">
+		SELECT r_num, b_num, r_name, r_content, r_date
+		FROM spring_reply
+		where r_num = #{r_num}
+	</select>
+	
+	<!-- 댓글 개수 구하기 -->
+	<select id="replyCnt" parameterType="int" resultType="int" >
+		select count(r_num) replyCnt from spring_reply where b_num = #{b_num}
+	</select>
+</mapper>
